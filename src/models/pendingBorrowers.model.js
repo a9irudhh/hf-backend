@@ -29,6 +29,9 @@ const pendingBorrowerSchema = new mongoose.Schema({
     lenderId : {
         type: mongoose.Schema.Types.ObjectId,
         ref : 'User'
+    },
+    buyerWalletAddress:{
+        type: mongoose.Schema.Types.ObjectId
     }
 });
 

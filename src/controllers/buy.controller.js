@@ -4,15 +4,14 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import PendingBorrower from "../models/pendingBorrowers.model.js";
 
 const createPendingRequest = asyncHandler(async (req, res) => {
-    const { userId, item, amount, interest, months } = req.body;
-    // Validate required fields
-    if (!userId || !item || !amount || !interest || !months) {
+    const { borrowerId, item, amount, interest, months, buyerWalletAddress } = req.body;
+
+    if (!borrowerId || !item || !amount || !interest || !months || !buyerWalletAddress) {
         throw new ApiError(400, "All fields are required");
     }
 
-    // Check for existing pending request
     const existingRequest = await PendingBorrower.findOne({
-        userId,
+        borrowerId,
         isClaimed: false
     });
 
@@ -21,13 +20,13 @@ const createPendingRequest = asyncHandler(async (req, res) => {
     }
 
     try {
-        // Create new pending request
         const newRequest = await PendingBorrower.create({
-            userId,
+            borrowerId,
             item,
             amount,
             interest,
-            months
+            months,
+            buyerWalletAddress
         });
 
         return res.status(201).json(
@@ -40,7 +39,8 @@ const createPendingRequest = asyncHandler(async (req, res) => {
                         amount: newRequest.amount,
                         interest: newRequest.interest,
                         months: newRequest.months,
-                        isClaimed: newRequest.isClaimed
+                        isClaimed: newRequest.isClaimed,
+                        buyerWalletAddress: newRequest.buyerWalletAddress
                     }
                 },
                 "Pending request created successfully"
