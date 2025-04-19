@@ -15,7 +15,7 @@ router.route("/logout").post(verifyJwt, logoutUser); //done
 router.route("/currentUser").get(verifyJwt, getCurrentUser); //done
 
 // New route for KYC verification
-router.route("/verifyKyc").post(verifyJwt, upload.fields([
+router.route("/verifyKyc").post(upload.fields([
     { name: 'selfieImage', maxCount: 1 },
     { name: 'documentImage', maxCount: 1 }
 ]), verifyKyc); //done

@@ -145,7 +145,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
 const verifyKyc = asyncHandler(async (req, res) => {
     try {
-        const userId = req.user?._id;
+        const userId = req.headers["id"];
         if (!userId) throw new ApiError(401, "Unauthorized");
 
         const user = await User.findById(userId);
