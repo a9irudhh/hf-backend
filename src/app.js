@@ -16,9 +16,10 @@ app.use(express.static("public")) // express.static() is a middleware function t
 // routes
 import userRoutes from "./routes/user.routes.js"
 import contractRoutes from "./routes/contracts.routes.js"
+import buyRoutes from "./routes/buy.routes.js"
 
 app.use("/api/users", userRoutes)
 app.use("/api/contracts", contractRoutes)
-
+app.use("/api/buy",buyRoutes)
 
 export default app;

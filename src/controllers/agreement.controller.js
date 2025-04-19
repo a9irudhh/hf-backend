@@ -220,159 +220,146 @@ const payEmi = asyncHandler(async (req, res) => {
   }
 });
 
+
 const getBorrowerAgreementDetails = asyncHandler(async (req, res) => {
-  try {
-      const { borrowerId } = req.params;
+    try {
+        const { borrowerId } = req.params;
 
-      // Find all payment agreements for the borrower (active and inactive)
-      const borrowerPayments = await Payment.find({ borrowerId });
-      
-      if (!borrowerPayments || borrowerPayments.length === 0) {
-          throw new ApiError(404, "No agreements found for this borrower");
-      }
+        const borrowerPayments = await Payment.find({ borrowerId });
 
-      // Setup blockchain connection
-      const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
-      const emiManagerContract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          EMIMANAGER_ABI,
-          provider
-      );
+        if (!borrowerPayments || borrowerPayments.length === 0) {
+            throw new ApiError(404, "No agreements found for this borrower");
+        }
 
-      // Fetch details for each agreement
-      const agreementDetails = await Promise.all(
-          borrowerPayments.map(async (payment) => {
-              const agreementId = parseInt(payment.agreementId);
-              
-              try {
-                  // Fetch all contract data in parallel
-                  const [
-                      agreementData,
-                      remainingEMIs,
-                      nextDueDate,
-                      currentEMIAmount,
-                      totalPaid,
-                      totalRemaining
-                  ] = await Promise.all([
-                      emiManagerContract.getAgreementDetails(agreementId),
-                      emiManagerContract.getRemainingEMIs(agreementId),
-                      emiManagerContract.getNextDueDate(agreementId),
-                      emiManagerContract.getCurrentEMIAmount(agreementId),
-                      emiManagerContract.getTotalAmountPaid(agreementId),
-                      emiManagerContract.getTotalAmountRemaining(agreementId)
-                  ]);
+        const agreementDetails = await Promise.all(
+            borrowerPayments.map(async (payment) => {
+                const agreementId = parseInt(payment.agreementId);
 
-                  // Format amounts in human-readable decimals
-                  const formatToken = (amount) => ethers.formatEther(amount);
+                try {
+                    const [
+                        agreementData,
+                        remainingEMIs,
+                        nextDueDate,
+                        currentEMIAmount,
+                        totalPaid,
+                        totalRemaining
+                    ] = await Promise.all([
+                        emiManagerContract.getAgreementDetails(agreementId),
+                        emiManagerContract.getRemainingEMIs(agreementId),
+                        emiManagerContract.getNextDueDate(agreementId),
+                        emiManagerContract.getCurrentEMIAmount(agreementId),
+                        emiManagerContract.getTotalAmountPaid(agreementId),
+                        emiManagerContract.getTotalAmountRemaining(agreementId)
+                    ]);
 
-                  return {
-                      agreementId: agreementId.toString(),
-                      lender: agreementData.lender,
-                      borrower: agreementData.borrower,
-                      token: agreementData.token,
-                      isActive: agreementData.isActive,
-                      totalAmount: formatToken(agreementData.totalAmount),
-                      interestRate: agreementData.interestRate / 100, // Convert back from percentage
-                      months: agreementData.months.toString(),
-                      paymentsMade: agreementData.paymentsMade.toString(),
-                      nextPaymentDue: new Date(Number(nextDueDate) * 1000).toISOString(),
-                      emiAmount: formatToken(currentEMIAmount),
-                      remainingEMIs: remainingEMIs.toString(),
-                      totalPaid: formatToken(totalPaid),
-                      totalRemaining: formatToken(totalRemaining),
-                      startTime: new Date(Number(agreementData.startTime) * 1000).toISOString(),
-                      databaseRecord: {
-                          isActive: payment.isActive,
-                          transactionHashes: payment.transactionHashes
-                      }
-                  };
-              } catch (error) {
-                  console.error(`Error fetching agreement ${agreementId}:`, error);
-                  return {
-                      agreementId: agreementId.toString(),
-                      error: error.message
-                  };
-              }
-          })
-      );
+                    const formatToken = (amount) => ethers.formatEther(amount);
 
-      return res.status(200).json(
-          new ApiResponse(200, agreementDetails, "Agreement details fetched successfully")
-      );
+                    const pendingBorrower = await PendingBorrower.findOne({ borrowerId });
+                    const itemName = pendingBorrower?.item || "N/A";
 
-  } catch (error) {
-      console.error("Get agreement details error:", error);
-      throw new ApiError(500, `Failed to fetch agreement details: ${error.message}`);
-  }
+                    return {
+                        agreementId: agreementId.toString(),
+                        lender: agreementData.lender,
+                        borrower: agreementData.borrower,
+                        token: agreementData.token,
+                        isActive: agreementData.isActive,
+                        totalAmount: formatToken(agreementData.totalAmount),
+                        interestRate: Number(agreementData.interestRate) / 100,
+                        months: agreementData.months.toString(),
+                        paymentsMade: agreementData.paymentsMade.toString(),
+                        nextPaymentDue: new Date(Number(nextDueDate) * 1000).toISOString(),
+                        emiAmount: formatToken(currentEMIAmount),
+                        remainingEMIs: remainingEMIs.toString(),
+                        totalPaid: formatToken(totalPaid),
+                        totalRemaining: formatToken(totalRemaining),
+                        itemName,
+                        startTime: new Date(Number(agreementData.startTime) * 1000).toISOString(),
+                        databaseRecord: {
+                            isActive: payment.isActive,
+                            transactionHashes: payment.transactionHashes
+                        }
+                    };
+                } catch (error) {
+                    console.error(`Error fetching agreement ${agreementId}:`, error);
+                    return {
+                        agreementId: agreementId.toString(),
+                        error: error.message
+                    };
+                }
+            })
+        );
+
+        return res.status(200).json(
+            new ApiResponse(200, agreementDetails, "Agreement details fetched successfully")
+        );
+    } catch (error) {
+        console.error("Get agreement details error:", error);
+        throw new ApiError(500, `Failed to fetch agreement details: ${error.message}`);
+    }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 const getLenderAgreementDetails = asyncHandler(async (req, res) => {
-  try {
-      const { lenderId } = req.params;
+    try {
+        const { lenderId } = req.params;
 
-      // Validate input
-      if (!lenderId) {
-          throw new ApiError(400, "Lender ID is required");
-      }
+        if (!lenderId) {
+            throw new ApiError(400, "Lender ID is required");
+        }
 
-      // Find all agreements for this lender
-      const paymentRecords = await Payment.find({ lenderId });
+        const paymentRecords = await Payment.find({ lenderId });
 
-      if (!paymentRecords || paymentRecords.length === 0) {
-          throw new ApiError(404, "No agreements found for this lender");
-      }
+        if (!paymentRecords || paymentRecords.length === 0) {
+            throw new ApiError(404, "No agreements found for this lender");
+        }
 
-      // Setup blockchain connection
-      const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
-      const emiManagerContract = new ethers.Contract(
-          CONTRACT_ADDRESS,
-          EMIMANAGER_ABI,
-          provider
-      );
+        const agreementDetails = await Promise.all(
+            paymentRecords.map(async (record) => {
+                try {
+                    const agreementId = parseInt(record.agreementId);
 
-      // Process all agreements in parallel
-      const agreementDetails = await Promise.all(
-          paymentRecords.map(async (record) => {
-              try {
-                  const agreementId = parseInt(record.agreementId);
-                  
-                  // Fetch lender-specific data
-                  const [totalPaid, totalRemaining, remainingMonths] = await Promise.all([
-                      emiManagerContract.getLenderTotalAmountPaid(agreementId),
-                      emiManagerContract.getLenderTotalAmountRemaining(agreementId),
-                      emiManagerContract.getLenderRemainingMonths(agreementId)
-                  ]);
+                    const pendingEntry = await PendingBorrower.findOne({
+                        lenderId,
+                        borrowerId: record.borrowerId
+                    });
 
-                  return {
-                      agreementId: record.agreementId,
-                      borrowerId: record.borrowerId,
-                      totalPaid: ethers.formatEther(totalPaid),
-                      totalRemaining: ethers.formatEther(totalRemaining),
-                      remainingMonths: remainingMonths.toString(),
-                      isActive: record.isActive,
-                      transactionCount: record.transactionHashes.length,
-                      lastPaymentDate: record.updatedAt
-                  };
-              } catch (error) {
-                  console.error(`Error processing agreement ${record.agreementId}:`, error);
-                  return {
-                      agreementId: record.agreementId,
-                      error: error.message
-                  };
-              }
-          })
-      );
+                    const itemName = pendingEntry?.item || "N/A";
 
-      return res.status(200).json(
-          new ApiResponse(200, agreementDetails, "Lender agreements fetched successfully")
-      );
+                    const [totalPaid, totalRemaining, remainingMonths] = await Promise.all([
+                        emiManagerContract.getLenderTotalAmountPaid(agreementId),
+                        emiManagerContract.getLenderTotalAmountRemaining(agreementId),
+                        emiManagerContract.getLenderRemainingMonths(agreementId)
+                    ]);
 
-  } catch (error) {
-      console.error("Get lender details error:", error);
-      throw new ApiError(500, `Failed to fetch lender details: ${error.message}`);
-  }
+                    return {
+                        agreementId: record.agreementId,
+                        borrowerId: record.borrowerId,
+                        totalPaid: ethers.formatEther(totalPaid),
+                        totalRemaining: ethers.formatEther(totalRemaining),
+                        remainingMonths: remainingMonths.toString(),
+                        itemName,
+                        isActive: record.isActive,
+                        transactionCount: record.transactionHashes.length,
+                        lastPaymentDate: record.updatedAt
+                    };
+                } catch (error) {
+                    console.error(`Error processing agreement ${record.agreementId}:`, error);
+                    return {
+                        agreementId: record.agreementId,
+                        error: error.message
+                    };
+                }
+            })
+        );
+
+        return res.status(200).json(
+            new ApiResponse(200, agreementDetails, "Lender agreements fetched successfully")
+        );
+    } catch (error) {
+        console.error("Get lender details error:", error);
+        throw new ApiError(500, `Failed to fetch lender details: ${error.message}`);
+    }
 });
-
 
 
 export { initiateAgreement, payEmi, getBorrowerAgreementDetails, getLenderAgreementDetails };
