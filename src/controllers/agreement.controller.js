@@ -176,7 +176,7 @@ const payEmi = asyncHandler(async (req, res) => {
 
     // Validate payment timing
     const currentTime = Math.floor(Date.now() / 1000);
-    if (currentTime <= Number(nextDueDate)) {
+    if (currentTime <= Number(nextDueDate) - 60) {
       throw new ApiError(
         400,
         `Payment not due yet. Next payment due: ${new Date(
