@@ -30,7 +30,7 @@ with tf.Graph().as_default() as graph:
     with tf.device(device_name):
         sess = tf.compat.v1.Session(graph=graph)
 
-# YOLOv8 face detector
+# YOLO11 face detector
 yolo_model = YOLO('yolo11m.pt')
 
 def detect_and_crop_face(image_path):
