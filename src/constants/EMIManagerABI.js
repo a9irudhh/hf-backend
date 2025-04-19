@@ -1,3 +1,4 @@
+export const EMIMANAGER_ABI = 
 [
     {
       "anonymous": false,

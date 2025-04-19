@@ -31,9 +31,24 @@ const generateToken = async (userId) => {
 
 const registerUser = asyncHandler(async (req, res) => {
     try {
-        const { email, password, fullName, address, city, state, country } = req.body;
-        if (!email || !password || !fullName || !address || !city || !state || !country) {
-            throw new ApiError(400, "Please fill in all fields");
+        const {
+            email,
+            password,
+            fullName,
+            city,
+            state,
+            country
+        } = req.body;
+
+        if (
+            !email ||
+            !password ||
+            !fullName ||
+            !city ||
+            !state ||
+            !country
+        ) {
+            throw new ApiError(400, "Please fill in all required fields");
         }
 
         const existingUser = await User.findOne({ email });
@@ -49,7 +64,7 @@ const registerUser = asyncHandler(async (req, res) => {
             Address: { city, state, country },
             isVerified: false,
             otp,
-            otpExpiresAt
+            otpExpiresAt,
         });
 
         const mailOptions = {
@@ -64,11 +79,14 @@ const registerUser = asyncHandler(async (req, res) => {
         const userCreated = await User.findById(newUser._id).select("-password -refreshToken");
         if (!userCreated) throw new ApiError(500, "Error creating user");
 
-        return res.status(201).json(new ApiResponse(200, "User created successfully. OTP sent to email.", userCreated));
+        return res
+            .status(201)
+            .json(new ApiResponse(200, "User created successfully. OTP sent to email.", userCreated));
     } catch (err) {
         throw new ApiError(500, err.message || "Registration failed");
     }
 });
+
 
 const loginUser = asyncHandler(async (req, res) => {
     try {

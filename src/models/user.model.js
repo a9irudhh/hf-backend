@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema({
     },
     privateKey:{
         type: String,
-        required: true
+        default: ""
     },
     role:{
         type: String,
@@ -64,7 +64,7 @@ const userSchema = new mongoose.Schema({
     },
     walletAddress:{
         type: String,
-        required: true
+        default: ""
     }
 }
 , {timestamps: true})
@@ -84,7 +84,6 @@ userSchema.methods.generateToken = function () {
     const token = jwt.sign(
         {
             _id: this._id,
-            userName: this.userName,
             email: this.email,
             fullName: this.fullName,
         },
