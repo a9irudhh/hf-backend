@@ -52,6 +52,19 @@ const userSchema = new mongoose.Schema({
     isKycVerified: {
         type: Boolean,
         default: false
+    },
+    privateKey:{
+        type: String,
+        required: true
+    },
+    role:{
+        type: String,
+        enum: ['lender', 'borrower'],
+        default: 'borrower'
+    },
+    walletAddress:{
+        type: String,
+        required: true
     }
 }
 , {timestamps: true})
